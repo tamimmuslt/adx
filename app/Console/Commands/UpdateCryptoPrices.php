@@ -186,57 +186,78 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\AssetPrice;
 use App\Models\Asset;
+use App\Models\AssetPrice;
 use WebSocket\Client;
-use Carbon\Carbon;
 
 class UpdateCryptoPrices extends Command
 {
     protected $signature = 'update:crypto-prices';
-    protected $description = 'Update crypto prices every second using WebSocket';
+    protected $description = 'Update crypto prices in real-time from Binance WebSocket (update or create current price)';
 
     public function handle()
     {
-        // WebSocket لـ ticker
-        $client = new Client("wss://stream.binance.com:9443/ws/btcusdt@ticker");
+        $this->info("🚀 Starting Binance WebSocket for multiple crypto assets ...");
 
-        $this->info("Started streaming BTC/USD prices...");
+        // 🟢 جلب الأصول crypto من قاعدة البيانات
+        $assets = Asset::where('category', 'crypto')->get();
+
+        if ($assets->isEmpty()) {
+            $this->error("❌ No crypto assets found in DB.");
+            return;
+        }
+
+        // 🟢 تجهيز Binance symbols
+        $symbols = [];
+        $map = [];
+
+        foreach ($assets as $asset) {
+            $binanceSymbol = strtolower(str_replace('/USD', 'usdt', $asset->symbol)); // BTC/USD -> btcusdt
+            $symbols[] = $binanceSymbol;
+            $map[strtoupper($binanceSymbol)] = $asset; // BTCUSDT => Asset model
+        }
+
+        $streams = implode('/', array_map(fn($s) => $s . '@bookTicker', $symbols));
+        $url = "wss://stream.binance.com:9443/stream?streams={$streams}";
+
+        $this->info("📡 Connecting to Binance for: " . implode(', ', array_keys($map)));
+
+        $client = new Client($url);
 
         while (true) {
             try {
                 $message = $client->receive();
                 $data = json_decode($message, true);
 
-                // سعر شراء وبيع
-                $buyPrice  = $data['b'] ?? null; // best bid
-                $sellPrice = $data['a'] ?? null; // best ask
+                if (!empty($data['data']['s']) && isset($data['data']['b']) && isset($data['data']['a'])) {
+                    $symbolFromBinance = strtoupper($data['data']['s']); // مثال BTCUSDT
+                    $buyPrice = $data['data']['b'];   // bid
+                    $sellPrice = $data['data']['a'];  // ask
 
-                if ($buyPrice && $sellPrice) {
-                    $asset = Asset::where('symbol', 'BTC/USD')->first();
-
-                    if ($asset) {
-                        // تحديث بدل إضافة سجل جديد
-                        AssetPrice::updateOrCreate(
-                            ['asset_id' => $asset->id],
-                            [
-                                'buy_price'  => $buyPrice,
-                                'sell_price' => $sellPrice,
-                                'timestamp'  => Carbon::now(),
-                            ]
-                        );
-
-                        $this->info("BTC/USD updated → Buy: $buyPrice | Sell: $sellPrice");
-                    } else {
-                        $this->warn("Asset BTC/USD not found in DB!");
+                    if (!isset($map[$symbolFromBinance])) {
+                        $this->warn("⚠️ Symbol {$symbolFromBinance} not mapped in DB.");
+                        continue;
                     }
+
+                    $asset = $map[$symbolFromBinance];
+
+                    // ✅ تعديل السعر الحالي أو إنشاء إذا ما كان موجود
+                    AssetPrice::updateOrCreate(
+                        ['asset_id' => $asset->id], // شرط التحديث
+                        [
+                            'buy_price' => $buyPrice,
+                            'sell_price' => $sellPrice,
+                            'timestamp' => now(),
+                        ]
+                    );
+
+                    $this->info("✅ Updated {$asset->symbol}: Buy={$buyPrice}, Sell={$sellPrice}");
                 }
 
             } catch (\Exception $e) {
-                $this->error("Error: " . $e->getMessage());
+                $this->error("❌ Error: " . $e->getMessage());
+                sleep(5);
             }
-
-            sleep(1);
         }
     }
 }

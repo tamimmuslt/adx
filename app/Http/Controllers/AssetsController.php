@@ -16,9 +16,35 @@ class AssetsController extends Controller
     // ========================
     public function index()
     {
-        $assets = Asset::all();
+$assets = Asset::with('latestPrice')->get();
         return response()->json($assets);
     }
+
+    public function show($id)
+{
+    $asset = Asset::with('latestPrice')->find($id);
+
+    if (!$asset) {
+        return response()->json(['error' => 'Asset not found'], 404);
+    }
+
+    return response()->json($asset);
+}
+public function history($id)
+{
+    $asset = Asset::find($id);
+
+    if (!$asset) {
+        return response()->json(['error' => 'Asset not found'], 404);
+    }
+
+    $prices = $asset->prices()->orderBy('timestamp', 'desc')->limit(50)->get();
+
+    return response()->json([
+        'asset' => $asset->symbol,
+        'history' => $prices
+    ]);
+}
 
     // ========================
     // إنشاء أصل جديد (Admin فقط)

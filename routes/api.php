@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AssetsController;
+use App\Http\Controllers\AssetPricesController;
 
 // -----------------------
 // Public Routes
@@ -39,11 +40,55 @@ Route::group(['middleware' => ['auth:api']], function() {
     });
 });
 
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
 
-Route::middleware(['auth:api'])->group(function () {
-    Route::get('/assets', [AssetsController::class,'index']); // عرض الأصول
+Route::middleware('auth:api')->group(function () {
 
-    Route::post('/assets', [AssetsController::class,'store']); // إنشاء أصل
-    Route::put('/assets/{id}', [AssetsController::class,'update']); // تعديل أصل
-    Route::delete('/assets/{id}', [AssetsController::class,'destroy']); // حذف أصل
+    // ===== أصول التداول =====
+    // عرض كل الأصول – متاح لأي مستخدم مسجّل دخول
+    Route::get('/assets', [AssetsController::class, 'index']);
+
+    // العمليات الخاصة بالمشرف (Admin)
+    Route::middleware('admin')->group(function () {
+        Route::post('/assets', [AssetsController::class, 'store']);       // إنشاء أصل جديد
+        Route::put('/assets/{id}', [AssetsController::class, 'update']);   // تعديل أصل
+        Route::delete('/assets/{id}', [AssetsController::class, 'destroy']); // حذف أصل
+    });
+
 });
+
+
+
+/*
+|--------------------------------------------------------------------------
+| API Routes – Asset Prices
+|--------------------------------------------------------------------------
+|
+| توفّر هذه المجموعة نقاط الوصول لإدارة أسعار الأصول.
+| - المشاهدة متاحة لأي مستخدم مسجّل.
+| - الإضافة/التعديل/الحذف للأدمن فقط.
+|
+*/
+
+// Route::middleware('auth:api')->group(function () {
+
+//     // ===== عرض آخر الأسعار لكل الأصول =====
+//     Route::get('/asset-prices', [AssetPricesController::class, 'index']);
+
+//     // ===== العمليات الخاصة بالأدمن =====
+//     Route::middleware('admin')->group(function () {
+//         Route::post('/asset-prices', [AssetPricesController::class, 'store']);      // إضافة سعر جديد
+//         Route::put('/asset-prices/{id}', [AssetPricesController::class, 'update']);  // تعديل سعر
+//         Route::delete('/asset-prices/{id}', [AssetPricesController::class, 'destroy']); // حذف سعر
+//     });
+
+
+Route::get('/assets', [AssetsController::class, 'index']);          // كل الأصول + آخر سعر
+Route::get('/assets/{id}', [AssetsController::class, 'show']);      // أصل واحد + آخر سعر
+Route::get('/assets/{id}/history', [AssetsController::class, 'history']); // سجل الأسعار
+
+

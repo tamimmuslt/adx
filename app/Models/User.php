@@ -38,7 +38,6 @@ class User extends Authenticatable implements JWTSubject
         'updated_at' => 'datetime',
     ];
 
-    // علاقات
     public function passwordResetTokens()
     {
         return $this->hasMany(PasswordResetToken::class);

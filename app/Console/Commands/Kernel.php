@@ -19,11 +19,12 @@ class Kernel extends ConsoleKernel
     /**
      * جدولة الأوامر.
      */
-    protected function schedule(Schedule $schedule): void
-    {
-        // تشغيل الأمر fetch:asset-prices كل دقيقة
-        $schedule->command('fetch:asset-prices')->everyMinute();
-    }
+  protected function schedule(Schedule $schedule): void
+{
+    // تشغيل الأمر update:crypto-prices كل دقيقة
+    $schedule->command('update:crypto-prices')->everyMinute();
+}
+
 
     /**
      * تسجيل جميع الأوامر.
@@ -33,5 +34,5 @@ class Kernel extends ConsoleKernel
         $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
-    }
+    }   
 }
