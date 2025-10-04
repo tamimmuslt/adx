@@ -123,4 +123,27 @@ public function history($id)
 
         return response()->json(['message'=>'Asset deleted successfully']);
     }
+
+    
+    public function latestPrice($id)
+{
+    $asset = Asset::findOrFail($id);
+    $price = $asset->prices()->orderBy('open_time','desc')->first();
+
+    return response()->json([
+        'symbol' => $asset->symbol,
+        'price'  => $price->close ?? $asset->price ?? null,
+        'time'   => $price->timestamp ?? null,
+    ]);
+}
+
+public function chart(Request $request, $id)
+{
+    $limit = (int) $request->get('limit', 200);
+    $asset = Asset::findOrFail($id);
+
+    $rows = $asset->prices()->orderBy('open_time','desc')->take($limit)->get(['open','high','low','close','open_time']);
+    return response()->json($rows->reverse()->values());
+}
+
 }

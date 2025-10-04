@@ -18,10 +18,9 @@ public function prices()
 
 public function latestPrice()
 {
-    return $this->hasOne(AssetPrice::class)->latestOfMany();
+    return $this->hasOne(AssetPrice::class)->latestOfMany('open_time');
 }
 
-    // علاقة الأصول بالصفقات
     public function orders()
     {
         return $this->hasMany(Order::class);

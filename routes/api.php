@@ -87,8 +87,11 @@ Route::middleware('auth:api')->group(function () {
 //     });
 
 
-Route::get('/assets', [AssetsController::class, 'index']);          // كل الأصول + آخر سعر
-Route::get('/assets/{id}', [AssetsController::class, 'show']);      // أصل واحد + آخر سعر
-Route::get('/assets/{id}/history', [AssetsController::class, 'history']); // سجل الأسعار
+// Route::get('/assets', [AssetsController::class, 'index']);          // كل الأصول + آخر سعر
+// Route::get('/assets/{id}', [AssetsController::class, 'show']);      // أصل واحد + آخر سعر
+// Route::get('/assets/{id}/history', [AssetsController::class, 'history']); // سجل الأسعار
+Route::get('/assets', [AssetsController::class, 'index']);
+Route::get('/assets/{id}/price', [AssetsController::class, 'latestPrice']);
+Route::get('/assets/{id}/chart', [AssetsController::class, 'chart']);
 
 

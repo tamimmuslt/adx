@@ -188,76 +188,111 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Asset;
 use App\Models\AssetPrice;
-use WebSocket\Client;
+use Illuminate\Support\Facades\Http;
+use Carbon\Carbon;
 
 class UpdateCryptoPrices extends Command
 {
     protected $signature = 'update:crypto-prices';
-    protected $description = 'Update crypto prices in real-time from Binance WebSocket (update or create current price)';
+    protected $description = 'Fetch crypto OHLC (1m) from Binance and store in DB';
 
     public function handle()
     {
-        $this->info("🚀 Starting Binance WebSocket for multiple crypto assets ...");
+        $this->info("🚀 Fetching crypto klines from Binance...");
 
-        // 🟢 جلب الأصول crypto من قاعدة البيانات
         $assets = Asset::where('category', 'crypto')->get();
 
         if ($assets->isEmpty()) {
             $this->error("❌ No crypto assets found in DB.");
-            return;
+            return 0;
         }
-
-        // 🟢 تجهيز Binance symbols
-        $symbols = [];
-        $map = [];
 
         foreach ($assets as $asset) {
-            $binanceSymbol = strtolower(str_replace('/USD', 'usdt', $asset->symbol)); // BTC/USD -> btcusdt
-            $symbols[] = $binanceSymbol;
-            $map[strtoupper($binanceSymbol)] = $asset; // BTCUSDT => Asset model
+            try {
+                $symbol = str_replace('/USD', 'USDT', $asset->symbol);
+
+                // kline (1m) آخر شمعة
+                $url = "https://api.binance.com/api/v3/klines?symbol={$symbol}&interval=1m&limit=1";
+                $response = Http::get($url);
+
+                if (!$response->successful()) {
+                    $this->error("❌ Binance klines failed for {$symbol}: HTTP ".$response->status());
+                    // فشل، نجرب fallback ل bookTicker
+                    $this->fallbackTick($asset, $symbol);
+                    continue;
+                }
+
+                $data = $response->json();
+
+                if (empty($data) || !isset($data[0])) {
+                    $this->error("❌ Empty kline for {$symbol}");
+                    $this->fallbackTick($asset, $symbol);
+                    continue;
+                }
+
+                $k = $data[0];
+                // structure: [ openTime, open, high, low, close, volume, closeTime, ... ]
+                $openTime = (int) $k[0]; // ms
+                $open  = (float) $k[1];
+                $high  = (float) $k[2];
+                $low   = (float) $k[3];
+                $close = (float) $k[4];
+
+                // حفظ الشمعة فقط اذا مش موجودة
+                $created = AssetPrice::firstOrCreate(
+                    ['asset_id' => $asset->id, 'open_time' => $openTime],
+                    [
+                        'open' => $open,
+                        'high' => $high,
+                        'low'  => $low,
+                        'close'=> $close,
+                        'timestamp' => Carbon::createFromTimestampMs($openTime),
+                    ]
+                );
+
+                // حدّث عمود السعر الأخير في جدول assets
+                $asset->update(['price' => $close]);
+
+                $this->info("✅ {$asset->symbol} saved OHLC (close={$close}) at ".Carbon::createFromTimestampMs($openTime)->toDateTimeString());
+
+                // قليل من التأخير لتخفيف الضغط على API
+                usleep(200000); // 200ms
+            } catch (\Exception $e) {
+                $this->error("❌ Exception for {$asset->symbol}: ".$e->getMessage());
+            }
         }
 
-        $streams = implode('/', array_map(fn($s) => $s . '@bookTicker', $symbols));
-        $url = "wss://stream.binance.com:9443/stream?streams={$streams}";
+        $this->info("🎯 All crypto prices processed.");
+        return 0;
+    }
 
-        $this->info("📡 Connecting to Binance for: " . implode(', ', array_keys($map)));
-
-        $client = new Client($url);
-
-        while (true) {
-            try {
-                $message = $client->receive();
-                $data = json_decode($message, true);
-
-                if (!empty($data['data']['s']) && isset($data['data']['b']) && isset($data['data']['a'])) {
-                    $symbolFromBinance = strtoupper($data['data']['s']); // مثال BTCUSDT
-                    $buyPrice = $data['data']['b'];   // bid
-                    $sellPrice = $data['data']['a'];  // ask
-
-                    if (!isset($map[$symbolFromBinance])) {
-                        $this->warn("⚠️ Symbol {$symbolFromBinance} not mapped in DB.");
-                        continue;
-                    }
-
-                    $asset = $map[$symbolFromBinance];
-
-                    // ✅ تعديل السعر الحالي أو إنشاء إذا ما كان موجود
-                    AssetPrice::updateOrCreate(
-                        ['asset_id' => $asset->id], // شرط التحديث
+    protected function fallbackTick($asset, $symbol)
+    {
+        try {
+            $url = "https://api.binance.com/api/v3/ticker/bookTicker?symbol={$symbol}";
+            $r = Http::get($url);
+            if ($r->successful()) {
+                $d = $r->json();
+                $bid = isset($d['bidPrice']) ? (float)$d['bidPrice'] : null;
+                if ($bid !== null) {
+                    // نحفظ كـ شمعة بسيطة (open=high=low=close=bid) مع الوقت الحالي
+                    $nowMs = (int) (microtime(true) * 1000);
+                    AssetPrice::firstOrCreate(
+                        ['asset_id' => $asset->id, 'open_time' => $nowMs],
                         [
-                            'buy_price' => $buyPrice,
-                            'sell_price' => $sellPrice,
+                            'open' => $bid,
+                            'high' => $bid,
+                            'low'  => $bid,
+                            'close'=> $bid,
                             'timestamp' => now(),
                         ]
                     );
-
-                    $this->info("✅ Updated {$asset->symbol}: Buy={$buyPrice}, Sell={$sellPrice}");
+                    $asset->update(['price' => $bid]);
+                    $this->info("ℹ️ Fallback saved tick for {$asset->symbol} = {$bid}");
                 }
-
-            } catch (\Exception $e) {
-                $this->error("❌ Error: " . $e->getMessage());
-                sleep(5);
             }
+        } catch (\Exception $e) {
+            $this->error("❌ Fallback exception for {$asset->symbol}: ".$e->getMessage());
         }
     }
 }

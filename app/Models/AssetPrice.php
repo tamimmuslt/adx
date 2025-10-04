@@ -1,14 +1,21 @@
 <?php
 namespace App\Models;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class AssetPrice extends Model
 {
-    use HasFactory;
+    protected $fillable = [
+        'asset_id','open','high','low','close','open_time','timestamp'
+    ];
 
-    protected $fillable = ['asset_id', 'buy_price', 'sell_price', 'timestamp'];
+    protected $casts = [
+        'open' => 'float',
+        'high' => 'float',
+        'low' => 'float',
+        'close' => 'float',
+        'open_time' => 'integer',
+        'timestamp' => 'datetime',
+    ];
 
     public function asset()
     {

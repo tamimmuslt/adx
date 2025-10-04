@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('asset_prices', function (Blueprint $table) {
+        Schema::create('asset_quotes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('asset_id')->constrained('assets')->onDelete('cascade');
             $table->decimal('buy_price', 15, 2);
@@ -17,6 +17,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('asset_prices');
+        Schema::dropIfExists('asset_quotes');
     }
 };

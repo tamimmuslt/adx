@@ -17,7 +17,7 @@ class Kernel extends ConsoleKernel
     ];
 
     /**
-     * جدولة الأوامر.
+     * جدولة الأوامر.update:crypto-prices
      */
   protected function schedule(Schedule $schedule): void
 {
