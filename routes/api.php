@@ -4,10 +4,14 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AssetsController;
 use App\Http\Controllers\AssetPricesController;
+use App\Http\Controllers\OrdersController;
+use App\Http\Controllers\DealsController;
+use App\Http\Controllers\WalletController;
+use App\Http\Controllers\TransactionController;
 
-// -----------------------
-// Public Routes
-// -----------------------
+
+
+
 Route::post('/register', [AuthController::class, 'register']); // تسجيل مستخدم عادي
 Route::post('/register-admin', [AuthController::class, 'registerAdmin']); // تسجيل Admin (Dashboard)
 Route::post('/login', [AuthController::class, 'login']); // تسجيل الدخول
@@ -23,6 +27,7 @@ Route::group(['middleware' => ['auth:api']], function() {
     
     Route::post('/logout', [AuthController::class, 'logout']); // تسجيل الخروج
     Route::post('/refresh', [AuthController::class, 'refresh']); // تحديث التوكن
+Route::get('/deals', [DealsController::class, 'index']);
 
     // أمثلة لمسارات محمية حسب الدور
     Route::group(['middleware' => ['role:user']], function() {
@@ -39,6 +44,7 @@ Route::group(['middleware' => ['auth:api']], function() {
         });
     });
 });
+Route::middleware('auth:api')->get('/me', [Authcontroller::class, 'me']);
 
 /*
 |--------------------------------------------------------------------------
@@ -46,21 +52,19 @@ Route::group(['middleware' => ['auth:api']], function() {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth:api')->group(function () {
+// Route::middleware('auth:api')->group(function () {
 
     // ===== أصول التداول =====
     // عرض كل الأصول – متاح لأي مستخدم مسجّل دخول
-    Route::get('/assets', [AssetsController::class, 'index']);
+//     Route::get('/assets', [AssetsController::class, 'index']);
 
-    // العمليات الخاصة بالمشرف (Admin)
-    Route::middleware('admin')->group(function () {
-        Route::post('/assets', [AssetsController::class, 'store']);       // إنشاء أصل جديد
-        Route::put('/assets/{id}', [AssetsController::class, 'update']);   // تعديل أصل
-        Route::delete('/assets/{id}', [AssetsController::class, 'destroy']); // حذف أصل
-    });
-
-});
-
+//     // العمليات الخاصة بالمشرف (Admin)
+//     Route::middleware('admin')->group(function () {
+//         Route::post('/assets', [AssetsController::class, 'store']);       // إنشاء أصل جديد
+//         Route::put('/assets/{id}', [AssetsController::class, 'update']);   // تعديل أصل
+//         Route::delete('/assets/{id}', [AssetsController::class, 'destroy']); // حذف أصل
+//     });
+//
 
 
 /*
@@ -90,8 +94,37 @@ Route::middleware('auth:api')->group(function () {
 // Route::get('/assets', [AssetsController::class, 'index']);          // كل الأصول + آخر سعر
 // Route::get('/assets/{id}', [AssetsController::class, 'show']);      // أصل واحد + آخر سعر
 // Route::get('/assets/{id}/history', [AssetsController::class, 'history']); // سجل الأسعار
-Route::get('/assets', [AssetsController::class, 'index']);
-Route::get('/assets/{id}/price', [AssetsController::class, 'latestPrice']);
-Route::get('/assets/{id}/chart', [AssetsController::class, 'chart']);
+// Route::get('/assets', [AssetsController::class, 'index']);
+// Route::get('/assets/{id}/price', [AssetsController::class, 'latestPrice']);
+// Route::get('/assets/{id}/chart', [AssetsController::class, 'chart']);
 
+use App\Http\Controllers\AssetController;
+
+Route::get('/assets', [AssetsController::class, 'index']);
+Route::get('/assets/{id}', [AssetsController::class, 'show']);
+Route::get('/assets/{id}/prices', [AssetsController::class, 'prices']);
+Route::get('/assets/{id}/latest', [AssetsController::class, 'latest']);
+
+Route::get('/assets/{id}/data', [AssetsController::class, 'getAssetData']);
+
+Route::middleware('auth:api')->group(function() {
+    Route::get('/orders', [OrdersController::class, 'index']);
+    Route::get('/orders/{id}', [OrdersController::class, 'show']);
+    Route::post('/orders', [OrdersController::class, 'store']);
+    Route::put('/orders/{id}', [OrdersController::class, 'update']);
+    Route::delete('/orders/{id}', [OrdersController::class, 'destroy']);
+    
+    Route::get('/wallet', [WalletController::class, 'index']); 
+
+    // سجل العمليات (Transactions)
+    Route::get('/transactions', [TransactionController::class, 'index']);
+
+    // إيداع جديد
+    Route::post('/transactions/deposit', [TransactionController::class, 'deposit']);
+
+    // سحب جديد
+    Route::post('/transactions/withdraw', [TransactionController::class, 'withdraw']);
+});
+
+Route::middleware('auth:api')->post('/orders/{id}/close', [OrdersController::class, 'closeOrder']);
 

@@ -9,15 +9,11 @@ class Deal extends Model
     use HasFactory;
 
     protected $fillable = [
-        'order_id',
-        'executed_price',
-        'executed_lots',
-        'pnl',
-        'executed_at'
+        'order_id', 'user_id', 'asset_id', 'side', 'lots',
+        'entry_price', 'close_price', 'pnl', 'executed_at'
     ];
 
-    public function order()
-    {
-        return $this->belongsTo(Order::class);
-    }
+    public function user()   { return $this->belongsTo(User::class); }
+    public function asset()  { return $this->belongsTo(Asset::class); }
+    public function order()  { return $this->belongsTo(Order::class); }
 }

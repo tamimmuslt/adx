@@ -8,21 +8,25 @@ class Asset extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'symbol', 'category'];
+    protected $fillable = ['name', 'symbol', 'category','price'];
 
-    // علاقة الأصول بالأسعار
-public function prices()
-{
-    return $this->hasMany(AssetPrice::class);
-}
+    public function prices()
+    {
+        return $this->hasMany(AssetPrice::class);
+    }
 
-public function latestPrice()
-{
-    return $this->hasOne(AssetPrice::class)->latestOfMany('open_time');
-}
+    public function latestPrice()
+    {
+        return $this->hasOne(AssetPrice::class)->latestOfMany('open_time');
+    }
 
     public function orders()
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function quotes()
+    {
+        return $this->hasMany(AssetQuote::class);
     }
 }

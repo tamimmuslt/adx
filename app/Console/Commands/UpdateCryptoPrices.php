@@ -190,6 +190,8 @@ use App\Models\Asset;
 use App\Models\AssetPrice;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+    use App\Models\AssetQuote;
 
 class UpdateCryptoPrices extends Command
 {
@@ -211,35 +213,25 @@ class UpdateCryptoPrices extends Command
             try {
                 $symbol = str_replace('/USD', 'USDT', $asset->symbol);
 
-                // kline (1m) آخر شمعة
+                // جلب آخر شمعة (OHLC)
                 $url = "https://api.binance.com/api/v3/klines?symbol={$symbol}&interval=1m&limit=1";
                 $response = Http::get($url);
 
-                if (!$response->successful()) {
-                    $this->error("❌ Binance klines failed for {$symbol}: HTTP ".$response->status());
-                    // فشل، نجرب fallback ل bookTicker
-                    $this->fallbackTick($asset, $symbol);
+                if (!$response->successful() || empty($response->json()[0])) {
+                    $this->error("❌ Binance klines failed for {$symbol}, using fallback tick.");
+                    $this->saveOrUpdateQuote($asset, $symbol);
                     continue;
                 }
 
-                $data = $response->json();
-
-                if (empty($data) || !isset($data[0])) {
-                    $this->error("❌ Empty kline for {$symbol}");
-                    $this->fallbackTick($asset, $symbol);
-                    continue;
-                }
-
-                $k = $data[0];
-                // structure: [ openTime, open, high, low, close, volume, closeTime, ... ]
+                $k = $response->json()[0];
                 $openTime = (int) $k[0]; // ms
                 $open  = (float) $k[1];
                 $high  = (float) $k[2];
                 $low   = (float) $k[3];
                 $close = (float) $k[4];
 
-                // حفظ الشمعة فقط اذا مش موجودة
-                $created = AssetPrice::firstOrCreate(
+                // حفظ الشمعة في asset_prices
+                AssetPrice::firstOrCreate(
                     ['asset_id' => $asset->id, 'open_time' => $openTime],
                     [
                         'open' => $open,
@@ -250,13 +242,17 @@ class UpdateCryptoPrices extends Command
                     ]
                 );
 
-                // حدّث عمود السعر الأخير في جدول assets
+                // تحديث عمود السعر الأخير في assets
                 $asset->update(['price' => $close]);
 
-                $this->info("✅ {$asset->symbol} saved OHLC (close={$close}) at ".Carbon::createFromTimestampMs($openTime)->toDateTimeString());
+                // حفظ أو تحديث سعر الشراء والبيع في asset_quotes
+                $this->saveOrUpdateQuote($asset, $symbol);
 
-                // قليل من التأخير لتخفيف الضغط على API
+                $this->info("✅ {$asset->symbol} processed: OHLC and quotes updated.");
+
+                // تأخير قليل لتخفيف الضغط على API
                 usleep(200000); // 200ms
+
             } catch (\Exception $e) {
                 $this->error("❌ Exception for {$asset->symbol}: ".$e->getMessage());
             }
@@ -266,33 +262,39 @@ class UpdateCryptoPrices extends Command
         return 0;
     }
 
-    protected function fallbackTick($asset, $symbol)
+    /**
+     * حفظ أو تحديث سعر الشراء والبيع في asset_quotes
+     */
+    protected function saveOrUpdateQuote($asset, $symbol)
     {
         try {
             $url = "https://api.binance.com/api/v3/ticker/bookTicker?symbol={$symbol}";
             $r = Http::get($url);
             if ($r->successful()) {
                 $d = $r->json();
-                $bid = isset($d['bidPrice']) ? (float)$d['bidPrice'] : null;
-                if ($bid !== null) {
-                    // نحفظ كـ شمعة بسيطة (open=high=low=close=bid) مع الوقت الحالي
-                    $nowMs = (int) (microtime(true) * 1000);
-                    AssetPrice::firstOrCreate(
-                        ['asset_id' => $asset->id, 'open_time' => $nowMs],
+                $buy = isset($d['askPrice']) ? (float)$d['askPrice'] : null;
+                $sell = isset($d['bidPrice']) ? (float)$d['bidPrice'] : null;
+
+                if ($buy !== null && $sell !== null) {
+                    // تحديث السجل إذا موجود أو إنشاء سجل جديد إذا غير موجود
+                    DB::table('asset_quotes')->updateOrInsert(
+                        ['asset_id' => $asset->id],  // الشرط: نفس الأصل
                         [
-                            'open' => $bid,
-                            'high' => $bid,
-                            'low'  => $bid,
-                            'close'=> $bid,
+                            'buy_price' => $buy,
+                            'sell_price'=> $sell,
                             'timestamp' => now(),
                         ]
-                    );
-                    $asset->update(['price' => $bid]);
-                    $this->info("ℹ️ Fallback saved tick for {$asset->symbol} = {$bid}");
+                    );  
+
+                    // تحديث عمود السعر الأخير في assets
+$asset->price = $sell;
+$asset->save();
+
+                    $this->info("ℹ️ {$asset->symbol} quote updated: buy={$buy}, sell={$sell}");
                 }
             }
         } catch (\Exception $e) {
-            $this->error("❌ Fallback exception for {$asset->symbol}: ".$e->getMessage());
+            $this->error("❌ Quote exception for {$asset->symbol}: ".$e->getMessage());
         }
     }
 }

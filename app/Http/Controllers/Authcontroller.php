@@ -320,5 +320,18 @@ public function resetPassword(Request $request)
     return response()->json(['message' => 'Password has been reset successfully']);
 }
 
+public function me(Request $request)
+{
+    $user = JWTAuth::user();
+    return response()->json([
+        'id'         => $user->id,
+        'full_name'  => $user->full_name,
+        'email'      => $user->email,
+        'phone'      => $user->phone,
+        'balance'    => $user->balance,
+        'role'       => $user->role,
+        'created_at' => $user->created_at,
+    ]);
+}
 
 }
