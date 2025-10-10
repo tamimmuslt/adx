@@ -96,9 +96,7 @@ Route::middleware('auth:api')->get('/me', [Authcontroller::class, 'me']);
 // Route::get('/assets/{id}/history', [AssetsController::class, 'history']); // سجل الأسعار
 // Route::get('/assets', [AssetsController::class, 'index']);
 // Route::get('/assets/{id}/price', [AssetsController::class, 'latestPrice']);
-// Route::get('/assets/{id}/chart', [AssetsController::class, 'chart']);
-
-use App\Http\Controllers\AssetController;
+// Route::get('/assets/{id}/chart', [AssetsController::class, 'chart'])
 
 Route::get('/assets', [AssetsController::class, 'index']);
 Route::get('/assets/{id}', [AssetsController::class, 'show']);

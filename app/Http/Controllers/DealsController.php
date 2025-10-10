@@ -16,6 +16,7 @@ public function index()
         ->orderBy('executed_at', 'desc')
         ->get();
     return response()->json($deals);
+
 }
 
 

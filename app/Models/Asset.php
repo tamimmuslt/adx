@@ -29,4 +29,9 @@ class Asset extends Model
     {
         return $this->hasMany(AssetQuote::class);
     }
+
+      public function deals()
+    {
+        return $this->hasMany(Deal::class);
+    }
 }

@@ -10,7 +10,7 @@ class Deal extends Model
 
     protected $fillable = [
         'order_id', 'user_id', 'asset_id', 'side', 'lots',
-        'entry_price', 'close_price', 'pnl', 'executed_at'
+        'entry_price', 'close_price', 'pnl', 'executed_price,executed_lots,executed_at'
     ];
 
     public function user()   { return $this->belongsTo(User::class); }
