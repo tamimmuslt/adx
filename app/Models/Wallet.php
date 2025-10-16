@@ -11,6 +11,8 @@ class Wallet extends Model
         'asset_symbol',   // BTC, XAU, TSLA...
         'asset_type',     // Cryptocurrency, Commodity, Stock ...
         'quantity',
+        
+
     ];
 
     // العلاقة مع المستخدم

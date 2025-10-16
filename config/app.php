@@ -122,5 +122,12 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+    
+    'aliases' => [
+    // باقي الـ facades الأساسية
+    // أضف هذا السطر:
+    'CurrencyConverter' => Mgcodeur\CurrencyConverter\Facades\CurrencyConverter::class,
+],
+
 
 ];

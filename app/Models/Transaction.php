@@ -14,6 +14,8 @@ class Transaction extends Model
         'balance_after',
         'method',         // Bank transfer, Binance Wallet, Crypto, ...
         'status',         // completed, pending, failed
+        'details',
+
     ];
 
     // العلاقة مع المستخدم

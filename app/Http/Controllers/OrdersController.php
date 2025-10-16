@@ -13,28 +13,16 @@ use App\Models\Wallet;
 class OrdersController extends Controller
 {
     // إنشاء أمر جديد (Buy/Sell)use App\Models\Deal;
-public function store(Request $request)
+   public function store(Request $request)
 {
     $validator = Validator::make($request->all(), [
         'asset_id'    => 'required|exists:assets,id',
         'order_type'  => 'required|in:buy,sell',
-        'lots'        => 'required|integer|min:1',
+        'lots'        => 'nullable|numeric|min:0.1', //  أقل قيمة 0.1
         'leverage'    => 'required|integer|min:1',
-        'take_profit' => 'required|numeric',
-        'stop_loss'   => 'required|numeric',
-    ], [
-        'asset_id.required'   => 'يجب تحديد الأصل (Asset).',
-        'asset_id.exists'     => 'الأصل المحدد غير موجود.',
-        'order_type.required' => 'يجب تحديد نوع العملية (شراء أو بيع).',
-        'order_type.in'       => 'نوع العملية يجب أن يكون buy أو sell فقط.',
-        'lots.required'       => 'يجب تحديد عدد اللوتات.',
-        'lots.integer'        => 'عدد اللوتات يجب أن يكون رقمًا صحيحًا.',
-        'lots.min'            => 'عدد اللوتات يجب أن تكون على الأقل 1.',
-        'leverage.required'   => 'يجب تحديد الرافعة المالية.',
-        'leverage.integer'    => 'الرافعة يجب أن تكون رقمًا صحيحًا.',
-        'leverage.min'        => 'الرافعة يجب أن تكون على الأقل 1.',
-        'take_profit.numeric' => 'قيمة جني الأرباح يجب أن تكون رقمًا.',
-        'stop_loss.numeric'   => 'قيمة وقف الخسارة يجب أن تكون رقمًا.',
+        'take_profit' => 'nullable|numeric',
+        'stop_loss'   => 'nullable|numeric',
+        'pending_order' => 'boolean',
     ]);
 
     if ($validator->fails()) {
@@ -45,8 +33,9 @@ public function store(Request $request)
     }
 
     $validated = $validator->validated();
+    $lots = $validated['lots'] ?? 0.1;
 
-    // جلب الأصل والسعر الحالي
+    //  جلب الأصل وسعره الحالي
     $asset = Asset::findOrFail($validated['asset_id']);
     $entryPrice = $asset->price;
 
@@ -56,62 +45,79 @@ public function store(Request $request)
         ], 422);
     }
 
-    // إنشاء الطلب
+    // \ حساب المبلغ المطلوب كهامش (نسخة معدّلة لتكون منطقية)
+    $amountUSD = ($entryPrice * $lots) / ($validated['leverage'] * 100);
+
+    $user = Auth::user();
+
+    //  التحقق من الرصيد
+    if ($user->balance < $amountUSD) {
+        return response()->json([
+            'message' => "رصيدك غير كافٍ لإتمام الصفقة. المبلغ المطلوب كهامش هو: $" . number_format($amountUSD, 2)
+        ], 422);
+    }
+
+    //  خصم الهامش
+    $user->balance -= $amountUSD;
+    $user->save();
+
+    //  إنشاء الطلب
     $order = Order::create([
-        'user_id'     => Auth::id(),
-        'asset_id'    => $validated['asset_id'],
-        'order_type'  => $validated['order_type'],
-        'lots'        => $validated['lots'],
-        'leverage'    => $validated['leverage'],
-        'entry_price' => $entryPrice,
-        'take_profit' => $validated['take_profit'] ?? null,
-        'stop_loss'   => $validated['stop_loss'] ?? null,
-        'status'      => 'pending',
+        'user_id'       => $user->id,
+        'asset_id'      => $validated['asset_id'],
+        'order_type'    => $validated['order_type'],
+        'lots'          => $lots,
+        'leverage'      => $validated['leverage'],
+        'entry_price'   => $entryPrice,
+        'take_profit'   => $validated['take_profit'] ?? null,
+        'stop_loss'     => $validated['stop_loss'] ?? null,
+        'pending_order' => $validated['pending_order'] ?? false,
+        'status'        => 'pending',
     ]);
 
-    // إنشاء الصفقة
+    //  إنشاء صفقة جديدة
     Deal::create([
         'order_id'    => $order->id,
-        'user_id'     => Auth::id(),
+        'user_id'     => $user->id,
         'asset_id'    => $validated['asset_id'],
         'side'        => $validated['order_type'],
-        'lots'        => $validated['lots'],
+        'lots'        => $lots,
         'entry_price' => $entryPrice,
-        'close_price' => null,
+        'close_price' => 0,
         'pnl'         => 0,
         'executed_at' => now(),
     ]);
 
-    // تحديث أو إنشاء المحفظة
-    $wallet = Wallet::firstOrCreate([
-        'user_id'      => Auth::id(),
-        'asset_symbol' => $asset->symbol,
-        'asset_type'   => $asset->category,
-    ], [
-        'quantity' => 0,
-    ]);
+    //  تحديث المحفظة
+    $wallet = Wallet::firstOrCreate(
+        [
+            'user_id'      => $user->id,
+            'asset_symbol' => $asset->symbol,
+            'asset_type'   => $asset->category,
+        ],
+        ['quantity' => 0]
+    );
 
-    // تعديل كمية الأصل في المحفظة حسب نوع العملية
     if ($validated['order_type'] === 'buy') {
-        $wallet->quantity += $validated['lots'];
+        $wallet->quantity += $lots;
     } elseif ($validated['order_type'] === 'sell') {
-        if ($wallet->quantity < $validated['lots']) {
+        if ($wallet->quantity < $lots) {
             return response()->json([
                 'message' => 'رصيدك غير كافٍ لبيع هذه الكمية.',
             ], 422);
         }
-        $wallet->quantity -= $validated['lots'];
+        $wallet->quantity -= $lots;
     }
 
     $wallet->save();
 
     return response()->json([
-        'message' => ' تم إنشاء الطلب وتحديث المحفظة بنجاح',
+        'message' => "تم إنشاء الطلب بنجاح  تم حجز مبلغ $" . number_format($amountUSD, 2) . " من رصيدك كهامش للصفقة.",
         'order'   => $order,
         'wallet'  => $wallet,
+        'balance' => $user->balance,
     ], 201);
 }
-
 
     // جلب أمر واحد بالتفصيل لمستخدمه فقط
     public function show($id)
@@ -175,24 +181,90 @@ public function update(Request $request, $id)
     }
 
     // إغلاق الصفقة واحتساب الربح/الخسارة وتحديث الرصيد
-    public function closeOrder($id)
-    {
-        $order = Order::where('user_id', Auth::id())->with('asset')->findOrFail($id);
-        $pnl = $this->calculatePnL($order);
+   public function closeOrder($id)
+{
+    $user = Auth::user();
+    $order = Order::where('user_id', $user->id)
+                  ->with('asset')
+                  ->findOrFail($id);
 
-        // التأكد من وجود المستخدم في order
-        $user = $order->user ?? User::find($order->user_id);
-
-        if ($order->status !== 'executed') {
-            $user->balance += $pnl;
-            $user->save();
-            $order->status = 'executed';
-            $order->save();
-        }
-
+    if ($order->status === 'executed') {
         return response()->json([
-            'order' => $order,
-            'balance' => $user->balance,
-        ]);
+            'message' => ' تم إغلاق هذه الصفقة مسبقًا.',
+        ], 400);
     }
+
+    $currentPrice = $order->asset->price;
+    $entryPrice = $order->entry_price;
+    $lots = $order->lots;
+    $leverage = $order->leverage;
+
+    //  حساب الربح أو الخسارة
+    if ($order->order_type === 'buy') {
+        $pnl = ($currentPrice - $entryPrice) * $lots * $leverage;
+    } else {
+        $pnl = ($entryPrice - $currentPrice) * $lots * $leverage;
+    }
+
+    //  حساب المارجن المحجوز (الهامش)
+    $margin = ($entryPrice * $lots) / $leverage;
+
+    //  تحديث الرصيد (إرجاع المارجن + الربح/الخسارة)
+    $user->balance += $margin + $pnl;
+    $user->save();
+
+    //  تحديث حالة الطلب
+    $order->status = 'executed';
+    $order->close_price = $currentPrice;
+    $order->save();
+
+    //  تحديث الصفقة المرتبطة
+    $deal = $order->deal;
+    if ($deal) {
+        $deal->close_price = $currentPrice;
+        $deal->pnl = $pnl;
+        $deal->save();
+    }
+
+    //  تعديل الكمية في الـ Wallet
+    $wallet = Wallet::where('user_id', $user->id)
+                    ->where('asset_symbol', $order->asset->symbol)
+                    ->first();
+
+    if ($wallet) {
+        if ($order->order_type === 'buy') {
+            // تقليل الكمية عند الإغلاق
+            $wallet->quantity -= $lots;
+        } else {
+            // إعادة الكمية عند بيعها
+            $wallet->quantity += $lots;
+        }
+        if ($wallet->quantity < 0) $wallet->quantity = 0;
+        $wallet->save();
+    }
+
+    return response()->json([
+        'message' => ' تم إغلاق الصفقة بنجاح!',
+        'pnl' => round($pnl, 2),
+        'margin_released' => round($margin, 2),
+        'balance' => round($user->balance, 2),
+        'order' => $order,
+    ]);
+}
+
+public function index()
+{
+    $user = Auth::user();
+
+    // جلب جميع الطلبات الخاصة بالمستخدم الحالي مع معلومات الأصل
+    $orders = Order::with('asset')
+        ->where('user_id', $user->id)
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    return response()->json([
+        'orders' => $orders,
+    ]);
+}
+
 }

@@ -4,8 +4,71 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2cc3d153e9b38fb9d1bab5ece2d2c9b0",
+    "content-hash": "5e1920b5721fd705c2af9a6ff55f96c1",
     "packages": [
+        {
+            "name": "amrshawky/laravel-currency",
+            "version": "3.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/amrshawky/laravel-currency.git",
+                "reference": "42bad96fad2291cc868e66fed5dd65282aede714"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/amrshawky/laravel-currency/zipball/42bad96fad2291cc868e66fed5dd65282aede714",
+                "reference": "42bad96fad2291cc868e66fed5dd65282aede714",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "guzzlehttp/guzzle": ">=6.0",
+                "illuminate/support": ">=6.0",
+                "php": ">=7.2"
+            },
+            "require-dev": {
+                "phpunit/phpunit": ">=8.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "AmrShawky\\Currency\\CurrencyServiceProvider"
+                    ],
+                    "aliases": {
+                        "Currency": "AmrShawky\\Currency\\Facade\\Currency"
+                    }
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "AmrShawky\\Currency\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Amr Shawky",
+                    "homepage": "https://amrshawky.com"
+                }
+            ],
+            "description": "A Laravel package for current and historical currency exchange rates & crypto exchange rates based on the free API provided by exchangerate.host",
+            "keywords": [
+                "currency",
+                "currency converter",
+                "exchange rates",
+                "laravel"
+            ],
+            "support": {
+                "issues": "https://github.com/amrshawky/laravel-currency/issues",
+                "source": "https://github.com/amrshawky/laravel-currency/tree/3.2.0"
+            },
+            "abandoned": true,
+            "time": "2021-05-10T16:41:33+00:00"
+        },
         {
             "name": "brick/math",
             "version": "0.14.0",
@@ -2265,6 +2328,85 @@
             "time": "2025-07-25T09:04:22+00:00"
         },
         {
+            "name": "mgcodeur/laravel-currency-converter",
+            "version": "1.0.8",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/mgcodeur/laravel-currency-converter.git",
+                "reference": "1bd5e5b73062bd68e76d0d4894378d6916a6d3a8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/mgcodeur/laravel-currency-converter/zipball/1bd5e5b73062bd68e76d0d4894378d6916a6d3a8",
+                "reference": "1bd5e5b73062bd68e76d0d4894378d6916a6d3a8",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^10.0||^11.0||^12.0",
+                "php": "^8.1||^8.2",
+                "spatie/laravel-package-tools": "^1.14.0"
+            },
+            "require-dev": {
+                "larastan/larastan": "^2.0.1",
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^7.10.0||^8.1.1",
+                "orchestra/testbench": "^8.22.0||^9.0.0||^10.0.0",
+                "pestphp/pest": "^2.20||^3.0",
+                "pestphp/pest-plugin-arch": "^2.0",
+                "pestphp/pest-plugin-laravel": "^2.0",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan-deprecation-rules": "^1.0",
+                "phpstan/phpstan-phpunit": "^1.0",
+                "spatie/laravel-ray": "^1.26"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "CurrencyConverter": "Mgcodeur\\CurrencyConverter\\Facades\\CurrencyConverter"
+                    },
+                    "providers": [
+                        "Mgcodeur\\CurrencyConverter\\CurrencyConverterServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Mgcodeur\\CurrencyConverter\\": "src/",
+                    "Mgcodeur\\CurrencyConverter\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "mgcodeur",
+                    "email": "mgcodeur@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Laravel Currency Converter: Effortlessly convert currencies in your Laravel applications, no API key required. It's fast, easy, and completely free.",
+            "homepage": "https://github.com/mgcodeur/laravel-currency-converter",
+            "keywords": [
+                "laravel",
+                "laravel-currency-converter",
+                "mgcodeur"
+            ],
+            "support": {
+                "issues": "https://github.com/mgcodeur/laravel-currency-converter/issues",
+                "source": "https://github.com/mgcodeur/laravel-currency-converter/tree/1.0.8"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/mgcodeur",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-06-07T12:25:18+00:00"
+        },
+        {
             "name": "monolog/monolog",
             "version": "3.9.0",
             "source": {
@@ -4165,6 +4307,67 @@
                 }
             ],
             "time": "2024-06-11T12:45:25+00:00"
+        },
+        {
+            "name": "spatie/laravel-package-tools",
+            "version": "1.92.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/laravel-package-tools.git",
+                "reference": "f09a799850b1ed765103a4f0b4355006360c49a5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/laravel-package-tools/zipball/f09a799850b1ed765103a4f0b4355006360c49a5",
+                "reference": "f09a799850b1ed765103a4f0b4355006360c49a5",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^9.28|^10.0|^11.0|^12.0",
+                "php": "^8.0"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.5",
+                "orchestra/testbench": "^7.7|^8.0|^9.0|^10.0",
+                "pestphp/pest": "^1.23|^2.1|^3.1",
+                "phpunit/php-code-coverage": "^9.0|^10.0|^11.0",
+                "phpunit/phpunit": "^9.5.24|^10.5|^11.5",
+                "spatie/pest-plugin-test-time": "^1.1|^2.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\LaravelPackageTools\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Freek Van der Herten",
+                    "email": "freek@spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Tools for creating Laravel packages",
+            "homepage": "https://github.com/spatie/laravel-package-tools",
+            "keywords": [
+                "laravel-package-tools",
+                "spatie"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/laravel-package-tools/issues",
+                "source": "https://github.com/spatie/laravel-package-tools/tree/1.92.7"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/spatie",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-07-17T15:46:43+00:00"
         },
         {
             "name": "stella-maris/clock",

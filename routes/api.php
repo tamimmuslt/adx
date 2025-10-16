@@ -8,7 +8,7 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\DealsController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\TransactionController;
-
+use Illuminate\Support\Facades\Http;
 
 
 
@@ -126,3 +126,7 @@ Route::middleware('auth:api')->group(function() {
 
 Route::middleware('auth:api')->post('/orders/{id}/close', [OrdersController::class, 'closeOrder']);
 
+
+use App\Http\Controllers\CurrencyController;
+
+Route::get('/eur-usd', [CurrencyController::class, 'getRates']);

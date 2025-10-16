@@ -7,9 +7,11 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "amrshawky/laravel-currency": "^3.2",
         "guzzlehttp/guzzle": "^7.10",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "mgcodeur/laravel-currency-converter": "^1.0",
         "ratchet/pawl": "^0.4.3",
         "symfony/css-selector": "^7.3",
         "symfony/dom-crawler": "^7.3",
